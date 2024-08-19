@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">TarefasDoDia</string>
+    <string name="delete_task">Deletar Task</string>
+
+
+        <string-array name="task_priority_options">
+            <item>Alta</item>
+            <item>Média</item>
+            <item>Baixa</item>
+        </string-array>
+
+
+</resources>
