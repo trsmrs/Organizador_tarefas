@@ -4,14 +4,12 @@ import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.CheckBox
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-
 class TaskAdapter(
-    private val tasks: List<Task>,
+    private var tasks: List<Task>,
     private val onDeleteClick: (Task) -> Unit,
     private val onTaskClick: (Task) -> Unit
 ) : RecyclerView.Adapter<TaskAdapter.TaskViewHolder>() {
@@ -21,7 +19,15 @@ class TaskAdapter(
         val timeTextView: TextView = itemView.findViewById(R.id.task_time_value)
         val priorityTextView: TextView = itemView.findViewById(R.id.task_priority_value)
         val deleteButton: ImageButton = itemView.findViewById(R.id.delete_button)
+
+        init {
+            itemView.setOnClickListener {
+                onTaskClick(tasks[adapterPosition])
+            }
+        }
     }
+
+
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TaskViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.task_item, parent, false)
@@ -52,7 +58,22 @@ class TaskAdapter(
         }
 
         holder.deleteButton.setOnClickListener { onDeleteClick(task) }
+
+        // Lógica para verificar se a tarefa está atrasada
+        val currentTime = System.currentTimeMillis()
+        val taskCompletionTime = task.creationTime + (task.time * 60 * 1000L) // tempo em milissegundos
+        if (taskCompletionTime <= currentTime) {
+            holder.itemView.setBackgroundResource(R.drawable.rounded_background_overdue) // Fundo vermelho se a tarefa estiver atrasada
+        } else {
+            holder.itemView.setBackgroundResource(R.drawable.rounded_background) // Fundo transparente se a tarefa não estiver atrasada
+        }
     }
 
     override fun getItemCount(): Int = tasks.size
+
+    fun updateTasks(newTasks: List<Task>) {
+        tasks = newTasks
+        notifyDataSetChanged()
+    }
 }
+

@@ -5,17 +5,19 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
+
 class TaskDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     companion object {
         private const val DATABASE_NAME = "tasks.db"
-        private const val DATABASE_VERSION = 1
+        private const val DATABASE_VERSION = 2 // Atualize a versão do banco de dados
         private const val TABLE_NAME = "tasks"
         private const val COLUMN_ID = "id"
         private const val COLUMN_NAME = "name"
         private const val COLUMN_TIME = "time"
         private const val COLUMN_PRIORITY = "priority"
         private const val COLUMN_COMPLETED = "completed"
+        private const val COLUMN_CREATED_AT = "created_at" // Nome correto da coluna
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -24,16 +26,18 @@ class TaskDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
                 + "$COLUMN_NAME TEXT, "
                 + "$COLUMN_TIME INTEGER, "
                 + "$COLUMN_PRIORITY INTEGER, "
-                + "$COLUMN_COMPLETED INTEGER)")
+                + "$COLUMN_COMPLETED INTEGER, "
+                + "$COLUMN_CREATED_AT INTEGER)") // Adiciona a coluna `created_at`
         db.execSQL(createTable)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_NAME")
-        onCreate(db)
+        if (oldVersion < newVersion) {
+            // Adiciona a coluna `created_at` na tabela existente
+            val alterTable = "ALTER TABLE $TABLE_NAME ADD COLUMN $COLUMN_CREATED_AT INTEGER"
+            db.execSQL(alterTable)
+        }
     }
-
-    // Métodos adicionais para inserir, atualizar e buscar tarefas
 
     fun addTask(task: Task): Long {
         val db = writableDatabase
@@ -42,6 +46,7 @@ class TaskDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
             put(COLUMN_TIME, task.time)
             put(COLUMN_PRIORITY, task.priority)
             put(COLUMN_COMPLETED, if (task.completed) 1 else 0)
+            put(COLUMN_CREATED_AT, task.creationTime)
         }
         return db.insert(TABLE_NAME, null, contentValues)
     }
@@ -58,7 +63,8 @@ class TaskDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
                 val time = getInt(getColumnIndexOrThrow(COLUMN_TIME))
                 val priority = getInt(getColumnIndexOrThrow(COLUMN_PRIORITY))
                 val completed = getInt(getColumnIndexOrThrow(COLUMN_COMPLETED)) == 1
-                tasks.add(Task(id, name, time, priority, completed))
+                val creationTime = getLong(getColumnIndexOrThrow(COLUMN_CREATED_AT)) // Adiciona a leitura da coluna `created_at`
+                tasks.add(Task(id, name, time, priority, completed, creationTime))
             }
         }
         cursor.close()
@@ -72,6 +78,7 @@ class TaskDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
             put(COLUMN_TIME, task.time)
             put(COLUMN_PRIORITY, task.priority)
             put(COLUMN_COMPLETED, if (task.completed) 1 else 0)
+            put(COLUMN_CREATED_AT, task.creationTime) // Atualiza o valor de `created_at`
         }
         return db.update(TABLE_NAME, contentValues, "$COLUMN_ID = ?", arrayOf(task.id.toString()))
     }
@@ -80,5 +87,6 @@ class TaskDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
         val db = writableDatabase
         return db.delete(TABLE_NAME, "$COLUMN_ID = ?", arrayOf(id.toString()))
     }
-
 }
+
+

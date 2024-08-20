@@ -15,7 +15,28 @@
             android:id="@+id/add_task_button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Add Task"
+            android:text="Adicionar Tarefa"
             android:layout_margin="16dp"/>
+
+        <LinearLayout
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+                <EditText
+                    android:id="@+id/interval_edit_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Intervalo (minutos)"
+                    android:inputType="number"/>
+
+                <Button
+                    android:id="@+id/start_timer_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Iniciar Timer"/>
+        </LinearLayout>
 </LinearLayout>
 
