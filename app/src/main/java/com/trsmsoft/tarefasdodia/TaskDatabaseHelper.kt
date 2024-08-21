@@ -10,32 +10,35 @@ class TaskDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
 
     companion object {
         private const val DATABASE_NAME = "tasks.db"
-        private const val DATABASE_VERSION = 2 // Atualize a versão do banco de dados
+        private const val DATABASE_VERSION = 2 // Incrementar a versão do banco de dados
         private const val TABLE_NAME = "tasks"
         private const val COLUMN_ID = "id"
         private const val COLUMN_NAME = "name"
         private const val COLUMN_TIME = "time"
         private const val COLUMN_PRIORITY = "priority"
         private const val COLUMN_COMPLETED = "completed"
-        private const val COLUMN_CREATED_AT = "created_at" // Nome correto da coluna
+        private const val COLUMN_CREATION_TIME = "created_at"
+        private const val COLUMN_HALF_TIME_PASSED = "halfTimePassed" // Nova coluna
     }
 
     override fun onCreate(db: SQLiteDatabase) {
-        val createTable = ("CREATE TABLE $TABLE_NAME ("
-                + "$COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT, "
-                + "$COLUMN_NAME TEXT, "
-                + "$COLUMN_TIME INTEGER, "
-                + "$COLUMN_PRIORITY INTEGER, "
-                + "$COLUMN_COMPLETED INTEGER, "
-                + "$COLUMN_CREATED_AT INTEGER)") // Adiciona a coluna `created_at`
+        val createTable = """
+            CREATE TABLE $TABLE_NAME (
+                $COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COLUMN_NAME TEXT,
+                $COLUMN_TIME INTEGER,
+                $COLUMN_PRIORITY INTEGER,
+                $COLUMN_COMPLETED INTEGER,
+                $COLUMN_CREATION_TIME INTEGER,
+                $COLUMN_HALF_TIME_PASSED INTEGER DEFAULT 0
+            )
+        """.trimIndent()
         db.execSQL(createTable)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        if (oldVersion < newVersion) {
-            // Adiciona a coluna `created_at` na tabela existente
-            val alterTable = "ALTER TABLE $TABLE_NAME ADD COLUMN $COLUMN_CREATED_AT INTEGER"
-            db.execSQL(alterTable)
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE $TABLE_NAME ADD COLUMN $COLUMN_HALF_TIME_PASSED INTEGER DEFAULT 0")
         }
     }
 
@@ -46,7 +49,9 @@ class TaskDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
             put(COLUMN_TIME, task.time)
             put(COLUMN_PRIORITY, task.priority)
             put(COLUMN_COMPLETED, if (task.completed) 1 else 0)
-            put(COLUMN_CREATED_AT, task.creationTime)
+            put(COLUMN_CREATION_TIME, task.creationTime)
+            put(COLUMN_HALF_TIME_PASSED, if (task.halfTimePassed) 1 else 0) // Adiciona valor para a nova coluna
+
         }
         return db.insert(TABLE_NAME, null, contentValues)
     }
@@ -63,8 +68,9 @@ class TaskDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
                 val time = getInt(getColumnIndexOrThrow(COLUMN_TIME))
                 val priority = getInt(getColumnIndexOrThrow(COLUMN_PRIORITY))
                 val completed = getInt(getColumnIndexOrThrow(COLUMN_COMPLETED)) == 1
-                val creationTime = getLong(getColumnIndexOrThrow(COLUMN_CREATED_AT)) // Adiciona a leitura da coluna `created_at`
-                tasks.add(Task(id, name, time, priority, completed, creationTime))
+                val halfTimePassed = getInt(getColumnIndexOrThrow(COLUMN_HALF_TIME_PASSED)) > 0
+                val creationTime = getLong(getColumnIndexOrThrow(COLUMN_CREATION_TIME)) // Adiciona a leitura da coluna `created_at`
+                tasks.add(Task(id, name, time, priority, completed, halfTimePassed, creationTime))
             }
         }
         cursor.close()
@@ -78,7 +84,8 @@ class TaskDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
             put(COLUMN_TIME, task.time)
             put(COLUMN_PRIORITY, task.priority)
             put(COLUMN_COMPLETED, if (task.completed) 1 else 0)
-            put(COLUMN_CREATED_AT, task.creationTime) // Atualiza o valor de `created_at`
+            put(COLUMN_CREATION_TIME, task.creationTime)
+            put(COLUMN_HALF_TIME_PASSED, if (task.halfTimePassed) 1 else 0) // Atualiza valor para a nova coluna
         }
         return db.update(TABLE_NAME, contentValues, "$COLUMN_ID = ?", arrayOf(task.id.toString()))
     }

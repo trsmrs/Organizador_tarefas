@@ -59,15 +59,24 @@ class TaskAdapter(
 
         holder.deleteButton.setOnClickListener { onDeleteClick(task) }
 
-        // Lógica para verificar se a tarefa está atrasada
+        // Lógica para determinar o tempo restante
         val currentTime = System.currentTimeMillis()
-        val taskCompletionTime = task.creationTime + (task.time * 60 * 1000L) // tempo em milissegundos
-        if (taskCompletionTime <= currentTime) {
-            holder.itemView.setBackgroundResource(R.drawable.rounded_background_overdue) // Fundo vermelho se a tarefa estiver atrasada
-        } else {
-            holder.itemView.setBackgroundResource(R.drawable.rounded_background) // Fundo transparente se a tarefa não estiver atrasada
+        val taskEndTime = task.creationTime + (task.time * 60 * 1000L)
+        val halfTime = task.creationTime + (task.time * 30 * 1000L)
+
+        when {
+            taskEndTime <= currentTime -> {
+                holder.itemView.setBackgroundResource(R.drawable.rounded_background_overdue) // Fundo vermelho se a tarefa estiver vencida
+            }
+            currentTime >= halfTime -> {
+                holder.itemView.setBackgroundResource(R.drawable.rounded_background_half_time) // Fundo amarelo se o tempo restante for menor que metade do tempo original
+            }
+            else -> {
+                holder.itemView.setBackgroundResource(R.drawable.rounded_background) // Fundo padrão se a tarefa não estiver atrasada e o tempo restante não for menor que a metade
+            }
         }
     }
+
 
     override fun getItemCount(): Int = tasks.size
 

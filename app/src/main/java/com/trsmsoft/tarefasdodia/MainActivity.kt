@@ -18,12 +18,26 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
+import android.os.CountDownTimer
 import android.util.Log
 import android.widget.ArrayAdapter
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 
 class MainActivity : AppCompatActivity() {
+
+    private var totalTime: Long = 0L
+    private var halfTime: Long = 0L
+    private var twentyMinutes: Long = 20 * 60 * 1000L // 20 minutos em milissegundos
+    private var countDownTimer: CountDownTimer? = null
+    private var ninetyPercentTime: Long = 0L
+    private var mediaPlayer: MediaPlayer? = null
+
+    private lateinit var hoursEditText: EditText
+    private lateinit var minutesEditText: EditText
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var taskAdapter: TaskAdapter
@@ -39,6 +53,9 @@ class MainActivity : AppCompatActivity() {
         recyclerView = findViewById(R.id.recycler_view)
         val addButton: Button = findViewById(R.id.add_task_button)
 
+        hoursEditText = findViewById(R.id.hours_edit_text)
+        minutesEditText = findViewById(R.id.minutes_edit_text)
+
         // Configuração do RecyclerView
         recyclerView.layoutManager = LinearLayoutManager(this)
         taskAdapter = TaskAdapter(
@@ -49,6 +66,8 @@ class MainActivity : AppCompatActivity() {
         recyclerView.adapter = taskAdapter
 
         taskDatabaseHelper = TaskDatabaseHelper(this)
+
+
 
         // Configuração do Spinner
         val spinner = findViewById<Spinner>(R.id.task_priority_spinner)
@@ -64,6 +83,18 @@ class MainActivity : AppCompatActivity() {
             Log.e("MainActivity", "Spinner not found!")
         }
 
+
+        val startButton: Button = findViewById(R.id.start_timer_button)
+
+        startButton.setOnClickListener {
+            val hours = hoursEditText.text.toString().toIntOrNull() ?: 0
+            val minutes = minutesEditText.text.toString().toIntOrNull() ?: 0
+
+            val totalTimeInMillis = calculateTotalTimeInMillis(hours, minutes)
+
+            startTimer(totalTimeInMillis)
+        }
+
         // Carregar e ordenar tarefas
         loadTasks()
 
@@ -73,6 +104,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         startTaskCheck()
+    }
+
+    private fun calculateTotalTimeInMillis(hours: Int, minutes: Int): Long {
+        val totalMinutes = hours * 60 + minutes
+        return totalMinutes * 60 * 1000L // Convert minutes to milliseconds
     }
 
 
@@ -141,6 +177,7 @@ class MainActivity : AppCompatActivity() {
                     time = time,
                     priority = priority,
                     completed = false,
+                    halfTimePassed = false,
                     creationTime = creationTime
                 )
                 taskDatabaseHelper.addTask(task)
@@ -156,6 +193,7 @@ class MainActivity : AppCompatActivity() {
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
     }
+
 
 
     // Função de geração de ID para tarefas
@@ -179,21 +217,36 @@ class MainActivity : AppCompatActivity() {
 
         tasksToCheck.forEach { task ->
             val taskEndTime = task.creationTime + (task.time * 60 * 1000)
-            if (taskEndTime <= currentTime) {
-                // A tarefa está vencida
-                if (!task.completed) {
-                    task.completed = true
-                    taskDatabaseHelper.updateTask(task)
-                    loadTasks() // Recarrega as tarefas, o que pode causar uma modificação na lista original
+            val halfTime = task.creationTime + (task.time * 30 * 1000) // Metade do tempo da tarefa em milissegundos
+
+            when {
+                taskEndTime <= currentTime -> {
+                    // A tarefa está vencida
+                    if (!task.completed) {
+                        task.completed = true
+                        taskDatabaseHelper.updateTask(task)
+                        loadTasks() // Recarrega as tarefas, o que pode causar uma modificação na lista original
+                    }
                 }
-            } else if (taskEndTime - currentTime <= (5 * 60 * 1000)) {
-                // Alerta se o tempo restante for menor ou igual a 5 minutos
-                // Você pode adicionar um alerta ou uma notificação aqui
-                showNotification(this)
+                currentTime >= halfTime -> {
+                    // O tempo restante é menor que metade do tempo original
+                    // Marque o fundo da tarefa como amarelo (ou outra cor que preferir)
+                    task.halfTimePassed = true
+                    taskDatabaseHelper.updateTask(task)
+                    loadTasks()
+                }
+                taskEndTime - currentTime <= (5 * 60 * 1000) -> {
+                    // Alerta se o tempo restante for menor ou igual a 5 minutos
+                    // Você pode adicionar um alerta ou uma notificação aqui
+                    showNotification(this, task.name)
+                    loadTasks()
+                }
             }
         }
-    }
 
+        // Atualiza a lista de tarefas na interface do usuário
+        loadTasks()
+    }
 
 
     fun createNotificationChannel(context: Context) {
@@ -212,7 +265,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun showNotification(context: Context) {
+    fun showNotification(context: Context, taskName: String) {
         // Criar um canal de notificação (se necessário)
         createNotificationChannel(context)
 
@@ -229,14 +282,17 @@ class MainActivity : AppCompatActivity() {
             PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Configurar o som da notificação
+        val soundUri = Uri.parse("android.resource://${context.packageName}/${R.raw.alarm}")
 
 
         // Criar a notificação
         val notification = NotificationCompat.Builder(context, "my_channel_id")
             .setSmallIcon(R.drawable.ic_notification) // Substitua com seu ícone
-            .setContentTitle("Título da Notificação")
-            .setContentText("Texto da Notificação")
+            .setContentTitle("Tarefa: $taskName") // Usa o nome da tarefa
+            .setContentText("Você tem uma tarefa pendente: $taskName")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setSound(soundUri)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
@@ -247,4 +303,74 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    private fun startTimer(totalTimeInMillis: Long) {
+        val halfTime = totalTimeInMillis / 2
+        val ninetyPercentTime = totalTimeInMillis * 0.9
+
+        countDownTimer = object : CountDownTimer(totalTimeInMillis, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                val elapsedTime = totalTimeInMillis - millisUntilFinished
+
+                if (elapsedTime >= halfTime && elapsedTime < halfTime + 1000) {
+                    showHalfTimeAlert()
+                }
+
+                if (elapsedTime >= ninetyPercentTime && elapsedTime < ninetyPercentTime + 1000) {
+                    showNinetyPercentAlert()
+                }
+            }
+
+            override fun onFinish() {
+                showEndTimeAlert()
+            }
+        }.start()
+    }
+
+    private fun showHalfTimeAlert() {
+        runOnUiThread {
+            if (!isFinishing) {
+                AlertDialog.Builder(this)
+                    .setTitle("Metade do Tempo!")
+                    .setMessage("Você chegou na metade do tempo disponível.")
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun showNinetyPercentAlert() {
+        runOnUiThread {
+            if (!isFinishing) {
+                AlertDialog.Builder(this)
+                    .setTitle("90% do Tempo Passado!")
+                    .setMessage("Você já usou 90% do tempo disponível.")
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun showEndTimeAlert() {
+        runOnUiThread {
+            if (!isFinishing) {
+                AlertDialog.Builder(this)
+                    .setTitle("Tempo Acabado!")
+                    .setMessage("O tempo disponível acabou.")
+                    .setPositiveButton("OK") { _, _ -> finish() }
+                    .show()
+            }
+        }
+    }
+
+    private fun playAlertSound() {
+        mediaPlayer?.release() // Libera o MediaPlayer anterior, se houver
+        mediaPlayer = MediaPlayer.create(this, R.raw.alarm)
+        mediaPlayer?.start()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        countDownTimer?.cancel()
+    }
 }
+
