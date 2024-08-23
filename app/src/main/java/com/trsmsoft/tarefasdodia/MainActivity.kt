@@ -53,8 +53,7 @@ class MainActivity : AppCompatActivity() {
         recyclerView = findViewById(R.id.recycler_view)
         val addButton: Button = findViewById(R.id.add_task_button)
 
-        hoursEditText = findViewById(R.id.hours_edit_text)
-        minutesEditText = findViewById(R.id.minutes_edit_text)
+
 
         // Configuração do RecyclerView
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -82,19 +81,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             Log.e("MainActivity", "Spinner not found!")
         }
-
-
-        val startButton: Button = findViewById(R.id.start_timer_button)
-
-        startButton.setOnClickListener {
-            val hours = hoursEditText.text.toString().toIntOrNull() ?: 0
-            val minutes = minutesEditText.text.toString().toIntOrNull() ?: 0
-
-            val totalTimeInMillis = calculateTotalTimeInMillis(hours, minutes)
-
-            startTimer(totalTimeInMillis)
-        }
-
+        
         // Carregar e ordenar tarefas
         loadTasks()
 
