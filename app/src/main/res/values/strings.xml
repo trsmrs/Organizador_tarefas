@@ -1,7 +1,9 @@
 <resources>
-    <string name="app_name">TarefasDoDia</string>
-    <string name="delete_task">Deletar Task</string>
-        <string-array name="task_priority_options">
+    <string name="app_name">Minhas Tarefas</string>
+    <string name="delete_task">Deletar Tarefa</string>
+    <string name="logo">logo</string>
+    <string name="desenvolvido_por_trsm">Desenvolvido por Trsm</string>
+    <string-array name="task_priority_options">
 
             <item>Alta</item>
             <item>Média</item>
